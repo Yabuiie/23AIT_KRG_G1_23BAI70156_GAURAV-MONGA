@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillWeave – Semantic Career Search</title>
+
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --text: #1f2937;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --muted: #6b7280;
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --text: #e5e7eb;
+      --card: #1e293b;
+      --primary: #38bdf8;
+      --muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--card);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    .left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .menu {
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    select, button.toggle {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--muted);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 260px;
+      height: 100vh;
+      background: var(--card);
+      box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+      padding: 20px;
+      transition: left 0.3s ease;
+      z-index: 20;
+    }
+
+    .sidebar.open { left: 0; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 10;
+    }
+
+    .overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* MAIN */
+    main {
+      max-width: 900px;
+      margin: 80px auto;
+      padding: 0 16px;
+      animation: fadeUp 0.6s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .search-box {
+      display: flex;
+      gap: 10px;
+      background: var(--card);
+      padding: 14px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    .search-box textarea {
+      flex: 1;
+      border: none;
+      font-size: 16px;
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      resize: none;
+      min-height: 22px;
+      line-height: 1.4;
+    }
+
+    .mic, .search {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .mic {
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      position: relative;
+    }
+
+    .mic.listening::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      background: rgba(37, 99, 235, 0.35);
+      animation: breathe 1.6s ease-in-out infinite;
+      z-index: -1;
+      filter: blur(2px);
+    }
+
+    @keyframes breathe {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.15); opacity: 0.9; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    .mic-icon {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .mic-icon:hover {
+        transform: scale(1.1);
+        opacity: 0.85;
+    }
+
+
+    .results {
+      margin-top: 32px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 18px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      animation: fadeUp 0.5s ease;
+    }
+
+    .card h3 { margin: 0 0 6px; }
+
+    .confidence {
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .confidence span {
+      display: block;
+      height: 100%;
+      background: var(--primary);
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="sidebar" id="sidebar">
+    <h3>Search History</h3>
+    <ul id="history"></ul>
+  </div>
+
+  <div class="overlay" id="overlay"></div>
+
+  <header>
+    <div class="left">
+      <span class="menu" id="menu">☰</span>
+      <h1 id="title">SkillWeave</h1>
+    </div>
+    <div class="controls">
+      <select id="lang">
+        <option value="en">English</option>
+        <option value="hi">हिंदी</option>
+      </select>
+      <button class="toggle" id="theme">🌙</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="search-box">
+      <textarea id="query" placeholder="Describe what a person does..."></textarea>
+      <button class="mic" id="mic"><img src="microphone.png" alt="Voice input" class="mic-icon" /></button>
+      <button class="search" id="search">Search</button>
+    </div>
+
+    <div class="results" id="results"></div>
+  </main>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const menu = document.getElementById('menu');
+    const results = document.getElementById('results');
+    const historyList = document.getElementById('history');
+
+    menu.onclick = () => {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+    };
+
+    overlay.onclick = () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    };
+
+    document.getElementById('theme').onclick = () => {
+      document.body.classList.toggle('dark');
+    };
+
+    document.getElementById('lang').onchange = (e) => {
+      if (e.target.value === 'hi') {
+        document.getElementById('query').placeholder = 'काम का विवरण लिखें...';
+        document.getElementById('title').innerText = 'स्किलवीव';
+      } else {
+        document.getElementById('query').placeholder = 'Describe what a person does...';
+        document.getElementById('title').innerText = 'SkillWeave';
+      }
+    };
+
+    document.getElementById('search').onclick = runSearch;
+    document.getElementById('query').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        runSearch();
+      }
+    });
+
+    async function runSearch() {
+      const q = document.getElementById('query').value.trim();
+      if (!q) return;
+
+      historyList.innerHTML += `<li>${q}</li>`;
+      results.innerHTML = "<p>Searching...</p>";
+      const response = await fetch("http://127.0.0.1:8000/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, top_k: 5 })
+      });
+
+      const data = await response.json();
+      results.innerHTML = "";
+
+      data.results.forEach(r => {
+        const confidence = Math.min(100, Math.round(r.score * 100));
+
+        results.innerHTML += `
+          <div class="card">
+            <h3>${r.title}</h3>
+            <p><b>NCO Code:</b> ${r.nco_code}</p>
+            <p><b>Division:</b> ${r.division}</p>
+            <p>${r.description.slice(0, 200)}...</p>
+            <div class="confidence">
+              <span style="width:${confidence}%"></span>
+        </div>
+      </div>
+    `;
+    });
+}
+    document.getElementById('mic').onclick = () => {
+      const micBtn = document.getElementById('mic');
+      const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      rec.lang = document.getElementById('lang').value === 'hi' ? 'hi-IN' : 'en-US';
+      micBtn.classList.add('listening');
+      rec.start();
+      rec.onresult = e => document.getElementById('query').value = e.results[0][0].transcript;
+      rec.onend = () => micBtn.classList.remove('listening');
+      rec.onerror = () => micBtn.classList.remove('listening');
+    };
+  </script>
+
+</body>
+</html>
